@@ -1,0 +1,97 @@
+services:
+  changedetection:
+    depends_on:
+      sockpuppetbrowser:
+    image: dgtlmoon/changedetection.io
+    restart: unless-stopped
+    networks:
+      - changedetection-puppeteer
+      - changedetection-privoxy
+    ports:
+        - 127.0.0.1:5000:5000
+    volumes:
+      - changedetection-data:/datastore
+      - ./proxies.json:/datastore/proxies.json:rw
+    environment:
+      - PLAYWRIGHT_DRIVER_URL=ws://sockpuppetbrowser:3000
+      - BASE_URL=http://localhost:3000
+      #- USE_X_SETTINGS=1
+      - HIDE_REFERER=true
+      - FETCH_WORKERS=10
+      - MINIMUM_SECONDS_RECHECK_TIME=3
+      - DISABLE_VERSION_CHECK=true
+      - TZ=Europe/Budapest
+    
+  sockpuppetbrowser:
+    depends_on:
+      - privoxy
+    image: dgtlmoon/sockpuppetbrowser:latest
+    restart: unless-stopped
+    networks:
+      - changedetection-puppeteer
+      - puppeteer-privoxy
+    cap_add:
+      - SYS_ADMIN
+    environment:
+      - SCREEN_WIDTH=1920
+      - SCREEN_HEIGHT=1024
+      - SCREEN_DEPTH=16
+      - MAX_CONCURRENT_CHROME_PROCESSES=10
+
+  privoxy:
+    depends_on:
+      - tor
+    build:
+      context: .
+      dockerfile: Dockerfile.privoxy
+      args:
+         ALPINE_VERSION: 3.21.2
+    image: privoxy:latest
+    restart: always
+    networks:
+      - changedetection-privoxy
+      - puppeteer-privoxy
+      - privoxy-tor
+
+  vanguards:
+    build:
+      context: .
+      dockerfile: Dockerfile.vanguards
+      args:
+         ALPINE_VERSION: 3.21.2
+    image: vanguards:latest
+    restart: always
+    networks:
+      - vanguards-tor
+    environment:
+      - CONTROL_PASSWORD=${CONTROL_PASSWORD}
+    volumes:
+      - microdesc-consensus:/var/lib/tor/:rw
+
+  tor:
+    build:
+      context: .
+      dockerfile: Dockerfile.tor
+      args:
+         ALPINE_VERSION: 3.21.2
+    image: tor:latest
+    restart: always
+    networks:
+      - privoxy-tor
+      - vanguards-tor
+    environment:
+      - CONTROL_PASSWORD=${CONTROL_PASSWORD}
+    volumes:
+      - microdesc-consensus:/var/lib/tor/:rw
+  
+
+volumes:
+  changedetection-data:
+  microdesc-consensus:
+ 
+networks:
+  changedetection-privoxy:
+  changedetection-puppeteer:
+  privoxy-tor:
+  puppeteer-privoxy:
+  vanguards-tor:

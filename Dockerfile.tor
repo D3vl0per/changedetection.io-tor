@@ -1,0 +1,27 @@
+# syntax=docker/dockerfile:experimental
+
+ARG ALPINE_VERSION=3.21.2
+    
+FROM alpine:${ALPINE_VERSION}
+
+RUN apk update --no-cache && \
+    apk add --no-cache tor \
+    su-exec \
+    curl
+
+RUN chown -R nobody:nogroup /var/lib/tor && \
+    touch /var/log/tor/notices.log && \
+    chown -R nobody:nogroup /var/log/tor/notices.log
+
+COPY tor-entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+EXPOSE 9100 9051
+
+VOLUME "/var/lib/tor"
+
+#HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=3 \
+#    CMD [ "curl --socks5-hostname 127.0.0.1:9100 http://check.torproject.org/ -f || exit 1" ]
+
+ENTRYPOINT [ "/usr/local/bin/entrypoint.sh" ]
+

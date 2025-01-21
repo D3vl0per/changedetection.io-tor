@@ -1,0 +1,16 @@
+# syntax=docker/dockerfile:experimental
+
+ARG ALPINE_VERSION=3.21.2
+    
+FROM alpine:${ALPINE_VERSION}
+
+RUN apk update --no-cache && \
+    apk add --no-cache privoxy
+
+COPY privoxy-entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+#HEALTHCHECK --interval=60s --timeout=30s --start-period=15s --retries=3 \
+#    CMD wget -qO- http://2gzyxa5ihm7nsggfxnu52rck2vv4rvmdlkiu3zzui5du4xyclen53wid.onion:8118 || exit 1
+
+ENTRYPOINT [ "/usr/local/bin/entrypoint.sh" ]

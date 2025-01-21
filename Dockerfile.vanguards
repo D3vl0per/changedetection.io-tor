@@ -1,0 +1,32 @@
+# syntax=docker/dockerfile:experimental
+
+ARG ALPINE_VERSION=3.21.2 \
+    VANGUARDS_VERSION=8132fa0
+    
+FROM alpine:${ALPINE_VERSION}
+
+RUN echo "http://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
+    apk update --no-cache && \
+    apk add --no-cache git \
+    python3 \
+    py3-pip \
+    pypy3 \
+    py3-virtualenv \
+    su-exec
+
+WORKDIR /opt
+RUN git clone --no-checkout https://github.com/mikeperry-tor/vanguards && \
+    cd vanguards && \
+    git checkout ${VANGUARDS_VERSION}
+
+WORKDIR /opt/vanguards
+RUN python3 -m venv venv && \
+    source venv/bin/activate && \
+    pip3 install -r requirements.txt && \
+    chmod +x setup.sh && \
+    /bin/ash setup.sh
+
+COPY vanguards-entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT [ "/usr/local/bin/entrypoint.sh" ]
